@@ -1,0 +1,2 @@
+class UnaryExpression(object):
+    pass

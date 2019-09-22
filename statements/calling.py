@@ -1,0 +1,2 @@
+class CallingStatement(object):
+    pass

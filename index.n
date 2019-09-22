@@ -1,0 +1,20 @@
+<?
+String hello = "Hello world";
+String x = 5;
+string test = "тест";
+
+?>
+html
+  head
+    title <?=hello?>
+body
+  h2 <?=hello?>
+  <? for key, value : {"x": 123, "z": "привет"}: ?>
+  p(style="color:green") <?=key?> = <?=value?>
+  <? ; ?>
+
+  <? int i = 0;
+  while i < 5: ?>
+  p(style="color:red") Ваше число: <?=i?>
+  <?i = i + 1;
+  ;?>

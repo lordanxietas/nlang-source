@@ -1,0 +1,4 @@
+<?
+
+echo(requests);
+// Python vk = requests.get('https://vk.com').text;
