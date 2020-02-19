@@ -1,12 +1,62 @@
 from type import *
+from nobject import *
+import json
+# import hacky
+
+
+# def nlangset(self, value):
+    # self.nlangval = value
+    # self.__dict__.update(value.__dict__)
+    # self.__set__(self, value)
+
+# class NLangString(str):
+#     def __init__(self, value):
+#         self.value = value
+#     def __get__(self):
+#         return self.value
+#     def __set__(self, value):
+#         self.value = value
+# hacky.set_class(str, type('NLangString', (str,), dict(NLangString.__dict__)))
+
+# objdict = hacky.fetch_dict(object)
+# objdict['nlangval'] = None
+# objdict['nlangset'] = nlangset
+# objdict['__get__'] = lambda self, *args, **kwargs: self.nlangval if self.nlangval != None else self
+
+
+def times(f, fn):
+    for i in range(0, f):
+        func = fn[0]
+        func({0: f})
+
+def foreach(d, fn):
+    fn = fn[0]
+    for key, value in d.items():
+        fn({"key": NObject(key), "value": NObject(value)})
 
 class NObject(object):
-    def __init__(self, value=None, isinstance=False, varname=None, type=None, this={}, static=False, access='private', parents=['object']):
+    def __init__(self, value=None, isinstance=False, varname=None, _type=None, this={}, static=False, access='private', parents=['object']):
         self._this = this
+        
         self._functionargs = {}
         self._varname = varname
         self._value = value
-        self._type = type
+        if type(self._value) == list:
+            self._this['pop'] = NObject(self._value.pop)
+            self._this['append'] = NObject(self._value.append)
+            self._this['remove'] = NObject(self._value.remove)
+        elif type(self._value) == dict:
+            self._this['get'] = NObject(self._value.get)
+            self._this['items'] = NObject(self._value.items)
+            self._this['foreach'] = lambda fn: foreach(self._value, fn)
+        elif type(self._value) == str:
+            self._this['replace'] = NObject(self._value.replace)
+            self._this['strip'] = NObject(self._value.strip)
+        elif type(self._value) == int:
+            self._this['times'] = lambda fn: times(self._value, fn)
+            self._this['str'] = lambda *a, **k: str(self._value)
+
+        self._type = _type
         self._static = static
         self._access = access
         self._parents = parents
@@ -55,11 +105,12 @@ class NObject(object):
             return self._value
         newargs = []
         kwargs = {}
-        
         for key, arg in args.items():
             if type(key) == int:
                 try:
-                    res = arg.nval()
+                    res = arg
+                    if type(res) == NObject:
+                        res = res.nval()
                     newargs.append(res)
                 except Exception as e:
                     import traceback
@@ -68,7 +119,7 @@ class NObject(object):
             else:
                 try:kwargs[key] = arg.nval()
                 except:kwargs[key] = arg
-        if 'FunctionDeclaration' in repr(self):
+        if 'FunctionDeclaration' in repr(self) or 'FunctionExpression' in repr(self):
             return NObject(self._value(args))
         if 'ClassFunction' in repr(self):
             return NObject(self._value(this, args))
@@ -91,4 +142,9 @@ class NObject(object):
 class NewNObject(NObject):
     def __init__(self):
         NObject.__init__(self)
-        
+
+def ispyobject(value):
+    # return str(type(value)) in [None, int, str, object]
+    for tp in ["None", 'class', 'function']:
+        if tp in str(type(value)):
+            return False

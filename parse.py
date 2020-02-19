@@ -135,8 +135,6 @@ class NParser(object):
             return DecoratorStatement(self.getter(), self.statement())
         raise WrongSyntaxException('Wrong syntax')
 
-    
-
     def block(self):
         statements = []
         self.consume(LBRACE)
@@ -314,14 +312,6 @@ class NParser(object):
             return False
         self.next()
         return True
-    def look(self, type, relativePosition=0):
-        current = self.get(0 + relativePosition)
-        try:
-            if type != current.type:
-                return False
-        except:
-            return False
-        return True
     def consume(self, type, relativePosition=0):
         current = self.get(0 + relativePosition)
         try:
@@ -331,6 +321,15 @@ class NParser(object):
             raise WrongSyntaxException('Неверный синтаксис')
         self.next()
         return current
+    def look(self, type, relativePosition=0):
+        current = self.get(0 + relativePosition)
+        try:
+            if type != current.type:
+                return False
+        except:
+            return False
+        return True
+    
     def get(self, relativePosition=0):
         position = self.position + relativePosition
         if position >= self.size():

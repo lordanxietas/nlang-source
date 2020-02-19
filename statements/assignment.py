@@ -21,8 +21,6 @@ class AssignmentStatement(object):
                 value = self.value.eval(vm)
                 self.getter.list[0].eval(vm)._this[str(exp)] = value
                 return
-        
-
         # присваиваем если например f = 123
         if len(self.getter.list) == 1:
             res = self.value.eval(vm)
@@ -30,7 +28,16 @@ class AssignmentStatement(object):
             vm[self.getter.list[0].text] = res
         else:
             value = self.value.eval(vm)
-            variable.assign(value)
+            if type(value) == NObject:
+                variable.assign(value)
+            else:
+                # variable.nlangset(value)
+                pass
+                # hacky.write_memory_in(id(variable)+24, value)
+
+                # print(thedict)
+                # print(thedict)
+            
     def __repr__(self):
         return f'{self.getter} = {self.value}'
 
@@ -39,12 +46,13 @@ class DeclarationStatement(object):
         self.type = type
         self.name = name
         self.value = value
-
     def eval(self, vm):
         '''Присваиваем по геттеру'''
         result = self.value.eval(vm)
-        result._type = self.type
-        vm[self.name] = result
-
+        if type(result) == NObject:
+            result._type = self.type
+            vm[self.name] = result
+        else:
+            vm[self.name] = NObject(result, _type=self.type)
     def __repr__(self):
-        return f'{self.type} {self.name} = {self.value}'
+        return f'{self._type} {self.name} = {self.value}'

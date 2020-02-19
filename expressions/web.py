@@ -5,7 +5,7 @@ class HtmlExpression(object):
     def __init__(self, text):
         self.text = text
     def eval(self, vm):
-        vm['result']._value += self.text
+        vm['___result']._value += str(self.text)
 
 class EchoExpression(object):
     def __init__(self, getter):
@@ -15,4 +15,4 @@ class EchoExpression(object):
         result = self.getter.eval(vm)
         if type(result) == NObject:
             result = result.nval()
-        vm['result']._value += str(result)
+        vm['___result']._value += str(result)

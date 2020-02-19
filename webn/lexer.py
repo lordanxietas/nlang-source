@@ -12,68 +12,73 @@ class Lexer(object):
         self.tokens = []
         self._started = False
         self._starts = 0
-        
         while self.position < len(self.text):
             current = self.peek()
-            if current == '<' and self.text[self.position + 1] == '?':
-                if self._started:
-                    raise LexerError('Парсинг языка N уже был запущен')
-                if self.html != '':
-                    self.addToken(HTML, self.html)
-                    self.html = ''
-                self.addToken(NLANGSTART, '<?')
-                self.next()
-                self.next()
-                self._started = True
-                self._starts += 1
-                continue
-            elif current == '?' and self.text[self.position + 1] == '>':
-                if not self._started:
-                    raise LexerError('Вы забыли закрыть тег')
-                self.addToken(NLANGEND, '?>')
-                self.next()
-                self.next()
-                self._started = False
-                continue
+            try:
+                if current == '<' and self.text[self.position + 1] == '?':
+                    if self._started:
+                        raise LexerError('Парсинг языка N уже был запущен')
+                    if self.html != '':
+                        self.addToken(HTML, self.html)
+                        self.html = ''
+                    self.addToken(NLANGSTART, '<?')
+                    self.next()
+                    self.next()
+                    self._started = True
+                    self._starts += 1
+                    continue
+                elif current == '?' and self.text[self.position + 1] == '>':
+                    if not self._started:
+                        raise LexerError('Вы забыли закрыть тег')
+                    self.addToken(NLANGEND, '?>')
+                    self.next()
+                    self.next()
+                    self._started = False
+                    continue
+            except:
+                break
             if not self._started:
                 self.html += current
                 self.next()
                 continue
-            if current.isdigit():
-                self.tokenizeNumber()
-            elif re.match('==', current + self.text[self.position + 1]):
-                self.next();self.next();
-                self.addToken(EQEQ, '==')
-            elif re.match('>=', current + self.text[self.position + 1]):
-                self.next();self.next();
-                self.addToken(GTEQ, '>=')
-            elif re.match('<=', current + self.text[self.position + 1]):
-                self.next();self.next();
-                self.addToken(LTEQ, '<=')
-            elif re.match('!=', current + self.text[self.position + 1]):
-                self.next();self.next();
-                self.addToken(EXCLEQ, '!=')
-            elif re.match('&&', current + self.text[self.position + 1]):
-                self.next();self.next();
-                self.addToken(AMPAMP, '&&')
-            elif re.match('\|\|', current + self.text[self.position + 1]):
-                self.next();self.next();
-                self.addToken(BARBAR, '||')
-            elif re.match('!=', current + self.text[self.position + 1]):
-                self.next();self.next();
-                self.addToken(EXCLEQ, '!=')
-            elif re.match('\t', current):
-                self.addToken(INDENT, 'tab')
-                self.next()
-            elif current in ['"', '`', "'"]:
-                self.next()
-                self.tokenizeString(current)
-            elif re.match('\w|_', current):
-                self.tokenizeVariable(current)
-            elif current in OPERATOR_CHARS:
-                self.tokenizeOperator()
-            else:
-                self.next()
+            try:
+                if current.isdigit():
+                    self.tokenizeNumber()
+                elif re.match('==', current + self.text[self.position + 1]):
+                    self.next();self.next();
+                    self.addToken(EQEQ, '==')
+                elif re.match('>=', current + self.text[self.position + 1]):
+                    self.next();self.next();
+                    self.addToken(GTEQ, '>=')
+                elif re.match('<=', current + self.text[self.position + 1]):
+                    self.next();self.next();
+                    self.addToken(LTEQ, '<=')
+                elif re.match('!=', current + self.text[self.position + 1]):
+                    self.next();self.next();
+                    self.addToken(EXCLEQ, '!=')
+                elif re.match('&&', current + self.text[self.position + 1]):
+                    self.next();self.next();
+                    self.addToken(AMPAMP, '&&')
+                elif re.match('\|\|', current + self.text[self.position + 1]):
+                    self.next();self.next();
+                    self.addToken(BARBAR, '||')
+                elif re.match('!=', current + self.text[self.position + 1]):
+                    self.next();self.next();
+                    self.addToken(EXCLEQ, '!=')
+                elif re.match('\t', current):
+                    self.addToken(INDENT, 'tab')
+                    self.next()
+                elif current in ['"', '`', "'"]:
+                    self.next()
+                    self.tokenizeString(current)
+                elif re.match('\w|_', current):
+                    self.tokenizeVariable(current)
+                elif current in OPERATOR_CHARS:
+                    self.tokenizeOperator()
+                else:
+                    self.next()
+            except:
+                break
         if self.html != '':
             self.addToken(HTML, self.html)
         return self.tokens

@@ -15,6 +15,7 @@ class ConditionalExpression(object):
         second = self.second.eval(vm)
         if type(second) == NObject:
             second = second.nval()
+
         if self.type == LT:
             return NObject(first < second)
         elif self.type == GT:
@@ -36,4 +37,7 @@ class ExcludeExpression(object):
     def __init__(self, expr):
         self.expr = expr
     def eval(self, vm):
-        return bool(self.expr.eval(vm).nval() == False)
+        res = self.expr.eval(vm)
+        if type(res) == NObject:
+            res = res.nval()
+        return bool(res == False)

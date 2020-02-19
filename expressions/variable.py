@@ -4,8 +4,10 @@ class VariableExpression(object):
         self.text = text
 
     def eval(self, vm):
+        # if self.text == 'None':
+        #     return None
         variable = vm.get(self.text)
-        if variable == None:
+        if variable == None: 
             return vm['undefined']
         return variable
     
@@ -18,6 +20,7 @@ class ArrayAccessExpression(object):
         self.access = access
     def eval(self, vm):
         res = self.variable
+
         for ac in self.access:
             result = ac.eval(vm).nval()
             res = res[result]

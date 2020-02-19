@@ -7,4 +7,4 @@ class ListExpression(object):
         array = []
         for value in self.list:
             array.append(value.eval(vm))
-        return NObject(array, type="List")
+        return NObject(array, _type="List")

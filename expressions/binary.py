@@ -8,11 +8,14 @@ class BinaryExpression:
     def eval(self, vm):
         res1 = self.expr1.eval(vm)
         if type(res1) == NObject:
+            obj1 = res1
             res1 = res1.nval()
         
-        res2 = self.expr2.eval(vm)
-        if type(res2) == NObject:
-            res2 = res2.nval()
+        if self.expr2 != 'bt':
+            res2 = self.expr2.eval(vm)
+            if type(res2) == NObject:
+                obj2 = res2
+                res2 = res2.nval()
 
         if self._type == PLUS:
             return NObject(res1 + res2)
@@ -30,3 +33,26 @@ class BinaryExpression:
                 return NObject(int(result))
             else:
                 return NObject(int(result))
+        elif self._type == PERCENT:
+            return NObject(res1 % res2)
+        elif self._type == DOUBLESLASH:
+            return NObject(res1 // res2)
+        elif self._type == STARSTAR:
+            return NObject(res1 ** res2)
+        elif self._type == PLUSEQ:
+            obj1._value += res2
+        elif self._type == MINUSEQ:
+            obj1._value -= res2
+        elif self._type == SLASHEQ:
+            obj1._value /= res2
+        elif self._type == STAREQ:
+            obj1._value *= res2
+        elif self._type == PERCENTEQ:
+            obj1._value %= res2
+        elif self._type == INCREMENT:
+            obj1._value += 1
+        elif self._type == DECREMENT:
+            obj1._value -= 1
+        
+        
+        

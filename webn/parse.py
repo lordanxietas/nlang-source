@@ -43,26 +43,19 @@ class NParser(object):
         return self.funcdecl()
 
     def funcdecl(self):
-        if (self.look(STRING) or self.look(NUM) or self.look(VOID) or self.look(VARIABLE)) and self.look(VARIABLE, 1) and self.look(LPAR, 2):
+        if (self.look(VARIABLE)) and self.look(VARIABLE, 1) and self.look(LPAR, 2):
             typeofret = self.get(0).text
             self.next()
             funcname = self.consume(VARIABLE).text
             self.consume(LPAR)
             args = {}
             while not self.match(RPAR):
-                try:
-                    type = self.consume(NUM).text
-                except:
-                    try:
-                        type = self.consume(FUNCTION).text
-                    except:
-                        try:
-                            type = self.consume(STRING).text
-                        except:
-                            type = self.get().text
-                            self.next()
+                type = self.get().text
+                self.next()
                 name = self.consume(VARIABLE).text
-                args[name] = type
+                args[name] = {"type": type, "base": None}
+                if self.match(EQUAL):
+                    args[name]["base"] = self.expression()
                 self.match(COMMA)
             block = self.block()
             return FunctionDeclaration(typeofret, funcname, args, block)
@@ -90,28 +83,25 @@ class NParser(object):
                 if 'static' in self.get().text:
                     static = True
                     self.next()
-                if self.look(VOID) or self.look(NUM) or self.look(STRING) or self.look(FUNCTION) or self.look(VARIABLE):
+                if self.look(VARIABLE):
                     type = self.get(0).text
                     self.next()
                 else:
-                    raise TypeError('Укажите тип переменной.')
+                    type = 'Python';
+                    self.next()
+                    # raise TypeError('Укажите тип переменной.')
+                    pass
                 name = self.consume(VARIABLE).text
                 if self.match(LPAR):
                     '''Функция'''
                     args = {}
                     while not self.match(RPAR):
-                        try:
-                            argtype = self.consume(NUM).text
-                        except:
-                            try:
-                                argtype = self.consume(FUNCTION).text
-                            except:
-                                try:
-                                    argtype = self.consume(STRING).text
-                                except:
-                                    argtype = self.consume(VARIABLE).text
+                        argtype = self.get(0).text
+                        self.next()
                         argname = self.consume(VARIABLE).text 
-                        args[argname] = argtype
+                        args[argname] = {"type": type, "base": None}
+                        if self.match(EQUAL):
+                            args[argname]["base"] = self.expression()
                         self.match(COMMA)
                     classfields.append(
                         ClassFunction(classname, access, static, type, name, args, self.block()))
@@ -128,7 +118,7 @@ class NParser(object):
     def startsvariable(self):
         current = self.get(0)
         
-        if (self.look(VARIABLE) or self.look(FUNCTION) or self.look(NUM) or self.look(STRING)) and self.look(VARIABLE, 1):
+        if (self.look(VARIABLE)) and self.look(VARIABLE, 1):
             # Декларация
             type = self.get(0).text;self.next();
             name = self.consume(VARIABLE).text
@@ -145,6 +135,27 @@ class NParser(object):
             if self.match(EQUAL):
                 expr = self.expression()
                 return AssignmentStatement(getter, expr)
+            elif self.look(STAR) and self.look(EQUAL, 1):
+                self.next();self.next();
+                return BinaryExpression(STAREQ, getter, self.expression())
+            elif self.look(SLASH) and self.look(EQUAL, 1):
+                self.next();self.next();
+                return BinaryExpression(SLASHEQ, getter, self.expression())
+            elif self.look(PLUS) and self.look(EQUAL, 1):
+                self.next();self.next();
+                return BinaryExpression(PLUSEQ, getter, self.expression())
+            elif self.look(MINUS) and self.look(EQUAL, 1):
+                self.next();self.next();
+                return BinaryExpression(MINUSEQ, getter, self.expression())
+            elif self.look(PERCENTEQ) and self.look(EQUAL, 1):
+                self.next();self.next();
+                return BinaryExpression(PERCENTEQEQ, getter, self.expression())
+            elif self.look(PLUS) and self.look(PLUS, 1):
+                self.next();self.next();
+                return BinaryExpression(INCREMENT, getter, 'bt')
+            elif self.look(MINUS) and self.look(MINUS, 1):
+                self.next();self.next();
+                return BinaryExpression(DECREMENT, getter, 'bt')
             return getter
         if self.match(AT):
             return DecoratorStatement(self.getter(), self.statement())
@@ -152,15 +163,19 @@ class NParser(object):
 
     def conditional_statement(self):
         if self.match(IF):
+            self.match(LPAR)
             cond = self.expression()
+            self.match(RPAR)
             ifst = BlockStatement(self.block())
             elsest = None
             if self.match(ELSE):
                 elsest = BlockStatement(self.block())
             return ConditionalStatement(cond, ifst, elsest)
         return self.for_statement()
+
     def for_statement(self):
         if self.match(FOR):
+            self.match(LPAR)
             if self.get(1).type == COMMA:
                 key = self.consume(VARIABLE).text
                 self.match(COMMA)
@@ -168,12 +183,14 @@ class NParser(object):
                 self.consume(COLON)
                 expr = self.getter()
                 block = BlockStatement(self.block())
+                self.match(RPAR)
                 return ForeachStatement(key, value, expr, block)
             decl = self.startsvariable()
             self.consume(DOTCOMMA)
             _while = self.expression()
             self.consume(DOTCOMMA)
             _do = self.statement()
+            self.match(RPAR)
             block = BlockStatement(self.block())
             return ForStatement(decl, _while, _do, block)
         return self.while_statement()
@@ -183,6 +200,10 @@ class NParser(object):
             expr = self.expression()
             block = BlockStatement(self.block())
             return WhileStatement(expr, block)
+        if ((self.get(0).type in [NUM, STRING] and self.look(DOT, 1)) or self.get(0).type in [LBRACE]):
+            res = self.getter()
+            
+            return res
         raise SyntaxError('Неверный синтаксис')
     
 
@@ -207,13 +228,33 @@ class NParser(object):
         return statements
 
     def expression(self):
+        return self.function()
+    
+    def function (self):
+
+        if self.match(FUNCTION):
+            self.consume(LPAR)
+            args = {}
+            while not self.match(RPAR):
+                type = self.get().text
+                self.next()
+                name = self.consume(VARIABLE).text
+                args[name] = {"type": type, "base": None}
+                if self.match(EQUAL):
+                    args[name]["base"] = self.expression()
+                self.match(COMMA)
+            block = self.block()
+            return FunctionExpression(args, block)
+
         return self.new()
     
     def new(self):
         if self.match(NEW):
             getter = self.getter()
             return NewExpression(getter, getter.list[0].args)
-        return self.logicalor()    
+        return self.funcexpr()
+    def funcexpr(self):
+        return self.logicalor()
 
     def logicalor(self):
         result = self.logicaland()
@@ -281,12 +322,26 @@ class NParser(object):
     def multiplicative(self):
         result = self.unary()
         while True:
+            if self.look(STAR) and self.look(STAR, 1):
+                self.next();self.next();
+                result = BinaryExpression(STARSTAR, result, self.unary())
+                continue
+            if self.look(SLASH) and self.look(SLASH, 1):
+                self.next();self.next();
+                result = BinaryExpression(DOUBLESLASH, result, self.unary())
+                continue
             if self.match(STAR):
                 result = BinaryExpression(STAR, result, self.unary())
                 continue
+            
             if self.match(SLASH):
                 result = BinaryExpression(SLASH, result, self.unary())
                 continue
+            if self.match(PERCENT):
+                result = BinaryExpression(PERCENT, result, self.unary())
+                continue
+            
+            
             break
         return result
     
@@ -325,8 +380,6 @@ class NParser(object):
                     access += [self.expression()]
                     self.consume(RQB)
                 getterarr += [ArrayAccessExpression(access)]
-            
-
         while self.match(DOT):
             if self.look(VARIABLE) and self.look(LPAR, 1):
                 var = self.primary()
@@ -359,6 +412,7 @@ class NParser(object):
             while not self.match(RQB):
                 array.append(self.expression())
                 self.match(COMMA)
+                self.match(DOTCOMMA)
             return ListExpression(array)
         if self.match(EXCL):
             return ExcludeExpression(self.expression())
@@ -370,6 +424,8 @@ class NParser(object):
                 self.consume(COLON)
                 array[name] = self.expression()
                 self.match(COMMA)
+                self.match(DOTCOMMA)
+            
             return DictExpression(array)
 
         if self.match(LPAR):

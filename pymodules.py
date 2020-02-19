@@ -6,9 +6,9 @@ import time
 import urllib
 import subprocess
 import requests
-
+import hashlib
 from nobject import *
-pymods = ["traceback", "os", "sys", "json", "time", "urllib", "subprocess", "threading", "requests"]
+pymods = ["traceback", "sys", "json", "time", "urllib", "subprocess", "threading", "requests", "hashlib"]
 
 mods = []
 

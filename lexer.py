@@ -1,4 +1,4 @@
-from enum import Enum
+# from enum import Enum
 from type import *
 import re
 
@@ -54,7 +54,7 @@ class Lexer(object):
         if not kwd:
             self.addToken(VARIABLE, variable)
         else:
-            self.addToken(kwd, f'{variable}')
+            self.addToken(kwd, str(variable))
     def tokenizeOperator(self):
         op = self.peek()
         self.next()

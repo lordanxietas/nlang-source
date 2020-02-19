@@ -16,11 +16,15 @@ class Redirect(Exception):
         self.text = text
     def get(self):
         return self.text
+class Die(Exception):pass
 
 def cfg(path=''):
     config = {
         "DirectoryIndex": "index.n",
-        "PugTranslation": False
+        "PugTranslation": False,
+        "deny": [
+            "__pycache__", ".vscode", "config.n", ".config",
+        ]
     }
     if path != '':
         path += "/"
@@ -32,8 +36,9 @@ def cfg(path=''):
 
 class NLangWebServer(object):
     def __init__(self):
-        
+        sys.path.insert(1, os.getcwd())
         app = flask.Flask(__name__, static_url_path='', static_folder='', template_folder='')
+        app.secret_key = 'weartrynbvs34etvfsetc43vrpesrsecrcerv4ervgcrdvsrvy5dhvrt'
         @app.before_request
         def before_request():
             config = cfg()
@@ -41,7 +46,7 @@ class NLangWebServer(object):
             filename = None
             uri = flask.request.environ["PATH_INFO"]
             if uri != '/':
-                def getfilename(uri):
+                def getfilename(config, uri):
                     uri = uri[1:]
                     if os.path.isdir(uri):
                         _cfg = cfg(uri)
@@ -78,27 +83,68 @@ class NLangWebServer(object):
                                 raise flask.BadRequest()
                             global current_app
                             current_app.root_path = path
+                            for ignore in config.get('deny'):
+                                if ignore in filepath:
+                                    raise NotFound()
                             return flask.send_file(_filename, conditional=True)
                     return None
-                filename = getfilename(uri)
+                filename = getfilename(config, uri)
                 if type(filename) != str:
                     return filename
             else:
                 filename = config.get('DirectoryIndex')
             if filename != None:
+                for ignore in config.get('deny'):
+                    if ignore in filename:
+                        raise NotFound()
                 return self.request(filename, config)
         self.app = app
     def run(self, ip, port):
         self.app.run(ip, port=port, debug=True)
+    
+    def nlang(self, vm, text):
+        result = str()
+        lexer = Lexer()
+        parser = NParser()
+        
+        def echo(vm, txt):
+            vm['___result___']._value += str(txt)
+        vm.lock()
+        vm['___result___'] = NObject("")
+        vm['echo'] = NObject(lambda txt: echo(vm, txt))
+
+        program = "<?" + str(text)
+        lines = program.split('\n')
+        nowstr = False
+        for line in lines:
+            ln = str()
+            for i, char in enumerate(line):
+                if char in ["'", '"', '`']:
+                    nowstr = False if nowstr == True else True
+                if char == '#':
+                    if not nowstr:
+                        break
+                ln += char
+            program += ln + '\n'
+        tokens = lexer.tokenize(program)
+        statements = parser.program(tokens)
+        for statement in statements:
+            statement.eval(vm)
+        res = vm['___result___'].nval()
+        vm.unlock()
+        return res
 
     def include(self, vm, filename, config):
         result = str()
         lexer = Lexer()
         parser = NParser()
         def echo(vm, text):
-            vm['result']._value += str(text)
+            vm['___result']._value += str(text)
         
-        lines = open(filename, encoding="utf-8").read().split('\n')
+        try:
+            lines = open(filename, encoding="utf-8").read().split('\n')
+        except:
+            raise NotFound('File ' + filename + ' not found at this server')
         program = str()
         nowstr = False
         for line in lines:
@@ -106,7 +152,7 @@ class NLangWebServer(object):
             for i, char in enumerate(line):
                 if char in ["'", '"', '`']:
                     nowstr = False if nowstr == True else True
-                if char == '/' and line[i + 1] == '/':
+                if char == '#':
                     if not nowstr:
                         break
                 ln += char
@@ -116,9 +162,9 @@ class NLangWebServer(object):
         for statement in statements:
             statement.eval(vm)
         if config.get("PugTranslation"):
-            return pypugjs.simple_convert(vm['result']._value)
+            return pypugjs.simple_convert(vm['___result']._value)
         else:
-            return str(vm['result']._value)
+            return str(vm['___result']._value)
 
     def request(self, filename, config):
         result = str()
@@ -126,22 +172,38 @@ class NLangWebServer(object):
         lexer = Lexer()
         parser = NParser()
         vm = modules(Nvm())
-        vm['result'] = NObject(str())
+        vm['___result'] = NObject(str())
         def echo(vm, text):
-            vm['result']._value += str(text)
+            vm['___result']._value += str(text)
         def include(filename):
             return self.include(vm, filename, config)
-        def header(location):
+        def location(location):
             raise Redirect(location)
         def die(vm):
-            return vm['result']
-        vm['header'] = NObject(header)
+            raise Die()
+        
+        def sha1(text):
+            return hashlib.sha1(bytes(text, 'utf-8')).hexdigest()
+        
+        def session(key, value='none'):
+            if value != 'none':
+                flask.session[key] = value
+            else:
+                return flask.session.get(key)
+
+        vm['session'] = NObject(session)
+        vm['sha1'] = NObject(sha1)
+        vm['redirect'] = NObject(location)
         vm['die'] = NObject(value=lambda:die(vm))
         vm['include'] = NObject(include, static=True)
         vm['echo'] = NObject(lambda text: echo(vm, text), static=True)
         vm['POST'] = NObject(dict(flask.request.form))
         vm['GET'] = NObject(dict(flask.request.args))
-        lines = open(filename, encoding="utf-8").read().split('\n')
+        vm['nlang'] = NObject(lambda text: self.nlang(vm, text))
+        try:
+            lines = open(filename, encoding="utf-8").read().split('\n')
+        except:
+            raise NotFound('File ' + filename + ' not found at this server')
         program = str()
         nowstr = False
         for line in lines:
@@ -149,7 +211,7 @@ class NLangWebServer(object):
             for i, char in enumerate(line):
                 if char in ["'", '"', '`']:
                     nowstr = False if nowstr == True else True
-                if char == '/' and line[i + 1] == '/':
+                if char == '#':
                     if not nowstr:
                         break
                 ln += char
@@ -161,9 +223,11 @@ class NLangWebServer(object):
         for statement in statements:
             try:
                 statement.eval(vm)
+            except Die:
+                break
             except Redirect as e:
                 return flask.redirect(e.get())
         if config.get("PugTranslation"):
-            return pypugjs.simple_convert(vm['result']._value)
+            return pypugjs.simple_convert(vm['___result']._value)
         else:
-            return str(vm['result']._value)
+            return str(vm['___result']._value)

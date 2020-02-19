@@ -1,6 +1,7 @@
 from nobject import *
 from type import *
 from exceptions import *
+
 class FunctionStatement(object):
     pass
 
@@ -19,7 +20,10 @@ class FunctionDeclaration(object):
             for funcargname, argtype in self.args.items():
                 if args.get(funcargname) == None:
                     try:
-                        args[funcargname] = args[i]
+                        try:
+                            args[funcargname] = args[i]
+                        except:
+                            args[funcargname] = self.args[funcargname]['base'].eval(vm)
                     except Exception as e:
                         if len(kwargs) == 0:
                             raise e
@@ -49,7 +53,57 @@ class FunctionDeclaration(object):
         return nobject
 
     def __repr__(self):
-        st = f'def {self.name}()' + ' {'
+        st = 'def {}()' + ' {'.format(self.name)
+        for state in self.statements:
+            st += ' ' + str(state) + ';'
+        st += '}'
+        return st
+
+class FunctionExpression(object):
+    def __init__(self, args, statements):
+        self.args = args
+        self.statements = statements
+    def eval(self, vm):
+        def call(args={}, **kwargs):
+            
+            vm.lock()
+            i = 0
+            for funcargname, argtype in self.args.items():
+                if args.get(funcargname) == None:
+                    try:
+                        try:
+                            args[funcargname] = args[i]
+                        except Exception as e:
+                            args[funcargname] = self.args[funcargname]['base'].eval(vm)
+                    except Exception as e:
+                        if len(kwargs) == 0:
+                            continue
+                i += 1
+            newargs = {}
+            for key, arg in kwargs.items():
+                if type(key) != int:
+                    newargs[key] = NObject(arg)
+            for key, arg in args.items():
+                if type(key) != int:
+                    newargs[key] = arg
+            args = newargs
+            for key, arg in newargs.items():
+                vm[key] = arg
+            for statement in self.statements:
+                try:
+                    statement.eval(vm)
+                except ReturnException as e:
+                    res = e.get()
+                    return res.nval()
+            vm.unlock()
+            return NObject()
+        nobject = NObject()
+        nobject._value = call
+        nobject._functionargs = self.args
+        return nobject
+
+    def __repr__(self):
+        st = 'def ()' + ' {'
         for state in self.statements:
             st += ' ' + str(state) + ';'
         st += '}'

@@ -1,6 +1,6 @@
 from .block import BlockStatement
 from ._class import ClassStatement, ClassFunction, ClassField
-from .function import FunctionStatement, FunctionDeclaration
+from .function import FunctionStatement, FunctionDeclaration, FunctionExpression
 from .skip import SkipStatement
 from ._return import ReturnStatement
 from ._break import BreakStatement

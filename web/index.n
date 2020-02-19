@@ -13,4 +13,3 @@
 
 <?
 echo('Hello world!');
-
