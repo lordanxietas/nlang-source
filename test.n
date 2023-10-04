@@ -1,17 +1,8 @@
-<?
-String hello = "Hello world1";
-?>
-html
-  head
-    title <?=hello?>
-body
-  h2 <?=hello?>
-  <? for key, value : {"x": 123, "z": 512}: ?>
-  p(style="color:green") <?=key?> = <?=value?>
-  <? ; ?>
+int x = 123;
+print(x);
 
-  <? int i = 0;
-  while i < 5: ?>
-  p(style="color:red") Ваше число: <?=i?>
-  <?i = i + 1;
-  ;?>
+class Test {
+    public int xy () {
+        print(125);
+    }
+}
